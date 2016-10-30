@@ -1,0 +1,84 @@
+#!/bin/sh
+#    Copyright 2016 Maximilian Stein
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+####################################################################################################
+PYTHON=python3
+QR=qr
+BASENAME=basename
+MKTEMP=mktemp
+LN=ln
+RM=rm
+HOSTNAME=hostname
+AWK=awk
+SED=sed
+
+PYTHON_HTTP_SERVER=http.server
+
+####################################################################################################
+usage()
+{
+    cat >2 <<EOF
+Usage:
+    $0 [options] file1 [file2 [file3 ...]]
+
+Options:
+    -i <ip>
+        Listen on ip (default: first non-loopback)
+EOF
+    exit 1;
+}
+
+[ $# -eq 0 ] && usage
+
+MULTIMODE=0
+[ $# -gt 1 ] && MULTIMODE=1
+
+TMPDIR=$($MKTEMP -d -t "shareviahttp.XXXXXXXXXXX")
+
+IP=$($HOSTNAME -I | $AWK '{print $1}')
+PORT=8000
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -i)
+            IP="$2"
+            shift;;
+        *)
+            FILENAME="$($BASENAME "$1")"
+            if [ "$FILENAME" = "." ]; then
+                # in case the user just gave . use the PWD instead
+                FILENAME="$($BASENAME $(pwd))"
+            fi
+            FILENAME=$(echo "$FILENAME" | $SED -e 's/\s\+/_/g')
+            $LN -s "$(pwd)/$1" "$TMPDIR/$FILENAME"
+            ;;
+    esac
+    shift
+done
+
+[ -z "$FILENAME" ] && echo "No file(s) given!" >2 && usage
+
+# generate the qr
+HTTP_PATH=http://$IP:$PORT
+[ $MULTIMODE -eq 0 ] && HTTP_PATH=$HTTP_PATH/$FILENAME
+
+$QR "$HTTP_PATH"
+echo "$HTTP_PATH"
+
+# start the python server
+cd "$TMPDIR"
+$PYTHON -m "$PYTHON_HTTP_SERVER" --bind $IP $PORT
+
