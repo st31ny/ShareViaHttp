@@ -15,3 +15,4 @@ Inspired by the [Android App "Share Via HTTP"](https://github.com/marcosdiez/sha
 * The script then generates a temporary directory with symbolic links to all specified files/directories and starts an http server in it.
 * The link to this temporary directory is printed as text and qr code.
 * In case only one directory or file is to be shared, the links directly points to this file/directory, so the download starts immediately.
+* To stop sharing just exit the script by pressing Ctrl+C.
